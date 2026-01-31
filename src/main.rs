@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read};
+use std::{fs::File, io::{self, Read}};
 use rand::Rng;
 
 const FILEPATH: &str = "src/data/words.txt";
@@ -43,6 +43,11 @@ fn string_to_vec(string_word: String)-> Result<Vec<char>, Box<dyn std::error::Er
     return Ok(vec);
 
 }
+fn string_to_vec2(s: String) -> Result<Vec<char>, Box<dyn std::error::Error>> { //claude le batard 
+
+    Ok(s.chars().collect()) // faire une fonction juste pour une boucle "for" faut aller ce faire foutre (ps: pour les dev)
+}
+
 
 // This function read a file from a path and load into a dictionnary ?
 fn random_word(file_path: &str)-> Result<String, Box<dyn std::error::Error>> {
@@ -59,30 +64,87 @@ fn random_word(file_path: &str)-> Result<String, Box<dyn std::error::Error>> {
     return Ok(the_choosen_one); //return the random word in to a vector containing each letter
 }
 
+#[derive(Debug)]
 enum PossibleOutcome{
-    False, 
-    Perfect,
-    Almost
+    Green,
+    Grey,
+    Yellow,
 }
 
-fn word_check(choosen_word: String, user_word: String)-> Result<(), Box<dyn std::error::Error>>{ // will check every letter of the word
+fn word_check(choosen_word: String, user_word: String)-> Result<Vec<PossibleOutcome>, Box<dyn std::error::Error>>{ // will check every letter of the word
     //create a new vector to house all the letter
-    let choosen_vector = string_to_vec(choosen_word)?;
-    let user_vector = string_to_vec(user_word)?;
+    let choosen_vector = string_to_vec(choosen_word)?; // convert string to a vector of letters
+    let  user_vector= string_to_vec(user_word)?;  // convert string to a vector of letters
 
     // compter le nomber de lettre que ce repéte pour le mots choisis et celui de l'utilisateur.
+    if choosen_vector.is_empty() || user_vector.is_empty(){
+        return Err(Box::from("One or both vector are empty!"));
+    }
+
+    let mut completion_vector = Vec::new();
     
-    match{
+    for (index, user_letter) in user_vector.iter().enumerate(){
+        if user_letter == &choosen_vector[index]{
+            // Green: correct letter in correct position
+            completion_vector.push(PossibleOutcome::Green);
+        } else if choosen_vector.contains(user_letter){
+            // Yellow: letter exists but wrong position
+            completion_vector.push(PossibleOutcome::Yellow);
+        } else {
+            // Grey: letter not in word
+            completion_vector.push(PossibleOutcome::Grey);
+        }
+    }
+
+    return Ok(completion_vector);
+}
+
+fn record_user_input()-> Result<String, Box<dyn std::error::Error>>{ //record user input for rounds.
+    let mut recoded_input = String::new();
+
+    io::stdin().read_line(&mut recoded_input)?;
+
+    let recorded_input = recoded_input.trim().to_string();
+    
+    return Ok(recorded_input); 
+}
+
+fn rounds(choosen_word: String)-> Result<bool, Box<dyn std::error::Error>>{
+    let maxround = 5;
+    let mut user_entries = 0;
+    
+    while user_entries < maxround{
+        println!("Round {}/{}", user_entries + 1, maxround);
+        let user_entry = record_user_input()?;
         
-
-    };
-
-    Ok(())
+        if user_entry.is_empty(){
+            println!("Please enter a valid word!");
+            continue;
+        }
+        
+        if user_entry.len() != WORDLEN as usize {
+            println!("Word must be {} letters long!", WORDLEN);
+            continue;
+        }
+        
+        let results = word_check(choosen_word.clone(), user_entry.clone())?;
+        println!("Results: {:?}", results);
+        
+        // Check if all letters are green (user won)
+        if results.iter().all(|outcome| matches!(outcome, PossibleOutcome::Green)){
+            println!("You won!");
+            return Ok(true);
+        }
+        
+        user_entries += 1;
+    }
+    
+    println!("cheh you twat the word was: {}", choosen_word);
+    return Ok(false);
 }
 
 
 fn main(){
-
-    word_check(choosen_word, user_word);
-
+    let c = random_word(FILEPATH).expect("Failed to get random word");
+    rounds(c).expect("Game failed");
 }
