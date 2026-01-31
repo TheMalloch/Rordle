@@ -1,7 +1,8 @@
 use std::{fs::File, io::{self, Read}};
 use rand::Rng;
 
-const FILEPATH: &str = "src/data/words.txt";
+//const FILEPATH: &str = "src/data/words.txt";
+const DICTPATH: &str = "/home/thedusty/wordle/src/data/dictionnary.txt";
 const WORDLEN: u8 = 5;
 
 // This function is returning one word at time as the index ++
@@ -43,6 +44,7 @@ fn string_to_vec(string_word: String)-> Result<Vec<char>, Box<dyn std::error::Er
     return Ok(vec);
 
 }
+#[allow(warnings)]
 fn string_to_vec2(s: String) -> Result<Vec<char>, Box<dyn std::error::Error>> { //claude le batard 
 
     Ok(s.chars().collect()) // faire une fonction juste pour une boucle "for" faut aller ce faire foutre (ps: pour les dev)
@@ -64,7 +66,7 @@ fn random_word(file_path: &str)-> Result<String, Box<dyn std::error::Error>> {
     return Ok(the_choosen_one); //return the random word in to a vector containing each letter
 }
 
-#[derive(Debug)]
+#[derive(Debug)] // besoin de comprendre ce truc
 enum PossibleOutcome{
     Green,
     Grey,
@@ -109,15 +111,42 @@ fn record_user_input()-> Result<String, Box<dyn std::error::Error>>{ //record us
     return Ok(recorded_input); 
 }
 
+// Creation of the dictonnary of valid word. 
+// This function will checked if the word does exist in the dictionnary(if in make one). 
+// The task is to make a fast parse while checking the words have the right length.
+
+fn load_file(file_path: &str)-> Result<Vec<String>, Box<dyn std::error::Error>>{
+
+    let mut getfile = File::open(file_path)?;
+    let mut content = String::new();
+    getfile.read_to_string(&mut content)?;
+    let mut loaded_vec = Vec::new();
+
+    for w in content.split_whitespace(){
+        loaded_vec.push(w.to_string());
+    }
+
+    return Ok(loaded_vec);
+}
+
+fn does_word_exist(user_input: &String,dictionnary: &Vec<String>)-> bool{
+    //Take the user input and checked if it is contained in the file.
+    //The file is load once at lauch of the round.
+    dictionnary.contains(&user_input)
+    //I want to load the file and not having to reload to check every user input.
+}
+
+
 fn rounds(choosen_word: String)-> Result<bool, Box<dyn std::error::Error>>{
     let maxround = 5;
     let mut user_entries = 0;
-    
+    let dictionnary = load_file(DICTPATH)?;
+
     while user_entries < maxround{
         println!("Round {}/{}", user_entries + 1, maxround);
         let user_entry = record_user_input()?;
         
-        if user_entry.is_empty(){
+        if user_entry.is_empty() || !does_word_exist(&user_entry, &dictionnary){
             println!("Please enter a valid word!");
             continue;
         }
@@ -145,6 +174,6 @@ fn rounds(choosen_word: String)-> Result<bool, Box<dyn std::error::Error>>{
 
 
 fn main(){
-    let c = random_word(FILEPATH).expect("Failed to get random word");
+    let c = random_word(DICTPATH).expect("Failed to get random word");
     rounds(c).expect("Game failed");
 }
