@@ -1,12 +1,12 @@
-use std::{fs::File, io::{self, Read}};
+use std::{fs::File, io::{self, Read},net::TcpListener, num::Saturating};
 use rand::Rng;
-
+mod websocket;
 //const FILEPATH: &str = "src/data/words.txt";
 const DICTPATH: &str = "/home/thedusty/wordle/src/data/dictionnary.txt";
 const WORDLEN: u8 = 5;
 
 // This function is returning one word at time as the index ++
-fn get_all_words(file_path: &str) -> Result<Vec<String>, Box<dyn std::error::Error>>{
+pub fn get_all_words(file_path: &str) -> Result<Vec<String>, Box<dyn std::error::Error>>{
     let mut getfile = File::open(file_path)?;
     
     /*
@@ -33,7 +33,7 @@ fn get_all_words(file_path: &str) -> Result<Vec<String>, Box<dyn std::error::Err
     return Ok(filevec); 
 }
 
-fn string_to_vec(string_word: String)-> Result<Vec<char>, Box<dyn std::error::Error>>{ 
+pub fn string_to_vec(string_word: String)-> Result<Vec<char>, Box<dyn std::error::Error>>{ 
     // convert a string to a vector while separating each letter 
 
     let mut vec = Vec::new();
@@ -52,7 +52,7 @@ fn string_to_vec2(s: String) -> Result<Vec<char>, Box<dyn std::error::Error>> { 
 
 
 // This function read a file from a path and load into a dictionnary ?
-fn random_word(file_path: &str)-> Result<String, Box<dyn std::error::Error>> {
+pub fn random_word(file_path: &str)-> Result<String, Box<dyn std::error::Error>> {
     // initialize the array (or maybe not)
     //let wordelist: [String;file_lenght(FilePath)] = [_];
     let wordslist= get_all_words(file_path)?; // get the result (vector) containing all the words in the file.
@@ -67,13 +67,13 @@ fn random_word(file_path: &str)-> Result<String, Box<dyn std::error::Error>> {
 }
 
 #[derive(Debug)] // besoin de comprendre ce truc
-enum PossibleOutcome{
+pub enum PossibleOutcome{
     Green,
     Grey,
     Yellow,
 }
 
-fn word_check(choosen_word: String, user_word: String)-> Result<Vec<PossibleOutcome>, Box<dyn std::error::Error>>{ // will check every letter of the word
+pub fn word_check(choosen_word: String, user_word: String)-> Result<Vec<PossibleOutcome>, Box<dyn std::error::Error>>{ // will check every letter of the word
     //create a new vector to house all the letter
     let choosen_vector = string_to_vec(choosen_word)?; // convert string to a vector of letters
     let  user_vector= string_to_vec(user_word)?;  // convert string to a vector of letters
@@ -173,7 +173,5 @@ fn rounds(choosen_word: String)-> Result<bool, Box<dyn std::error::Error>>{
 }
 
 
-fn main(){
-    let c = random_word(DICTPATH).expect("Failed to get random word");
-    rounds(c).expect("Game failed");
+fn main() {
 }
