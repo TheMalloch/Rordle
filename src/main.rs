@@ -1,4 +1,5 @@
-use std::{fs::File, io::{self, Read},net::TcpListener, num::Saturating};
+use std::{fs::File, io::{self, Read}};
+use base64::read;
 use rand::Rng;
 mod websocket;
 //const FILEPATH: &str = "src/data/words.txt";
@@ -68,10 +69,12 @@ pub fn random_word(file_path: &str)-> Result<String, Box<dyn std::error::Error>>
 
 #[derive(Debug)] // besoin de comprendre ce truc
 pub enum PossibleOutcome{
-    Green,
-    Grey,
-    Yellow,
+    Green(char),
+    Grey(char),
+    Yellow(char),
 }
+
+use std::collections::HashMap;
 
 pub fn word_check(choosen_word: String, user_word: String)-> Result<Vec<PossibleOutcome>, Box<dyn std::error::Error>>{ // will check every letter of the word
     //create a new vector to house all the letter
@@ -83,18 +86,41 @@ pub fn word_check(choosen_word: String, user_word: String)-> Result<Vec<Possible
         return Err(Box::from("One or both vector are empty!"));
     }
 
+    //check if the letter repeat using Hashmap !!
+    let mut repeat_hash: HashMap<char,u8> = HashMap::new();
+    for letter in choosen_vector.iter(){
+        *repeat_hash.entry(*letter).or_insert(0) +=1;
+    }
+
+    /*   
+    for letter in choosen_vector.iter() {
+        let key = *letter;
+        
+        if letter_counts.contains_key(&key) {
+            // Key exists — get current value and increment
+            let current_value = letter_counts.get_mut(&key).unwrap();
+            *current_value += 1;
+        } else {
+            // Key doesn't exist — insert with value 1
+            letter_counts.insert(key, 1);
+        }
+    }
+    */
+
     let mut completion_vector = Vec::new();
-    
     for (index, user_letter) in user_vector.iter().enumerate(){
         if user_letter == &choosen_vector[index]{
             // Green: correct letter in correct position
-            completion_vector.push(PossibleOutcome::Green);
-        } else if choosen_vector.contains(user_letter){
+            completion_vector.push(PossibleOutcome::Green(*user_letter));
+            //*repeat_hash.remove(user_letter).get_or_insert(0) -=1;
+            *repeat_hash.get_mut(user_letter).unwrap() -= 1; //
+        } else if repeat_hash.get(user_letter).is_some_and(|&count| count>0){
             // Yellow: letter exists but wrong position
-            completion_vector.push(PossibleOutcome::Yellow);
+            completion_vector.push(PossibleOutcome::Yellow(*user_letter));
+            *repeat_hash.get_mut(user_letter).unwrap() -= 1;
         } else {
             // Grey: letter not in word
-            completion_vector.push(PossibleOutcome::Grey);
+            completion_vector.push(PossibleOutcome::Grey(*user_letter));
         }
     }
 
@@ -137,13 +163,13 @@ fn does_word_exist(user_input: &String,dictionnary: &Vec<String>)-> bool{
 }
 
 
-fn rounds(choosen_word: String)-> Result<bool, Box<dyn std::error::Error>>{
+pub fn rounds(choosen_word: String)-> Result<bool, Box<dyn std::error::Error>>{
     let maxround = 5;
     let mut user_entries = 0;
     let dictionnary = load_file(DICTPATH)?;
 
     while user_entries < maxround{
-        println!("Round {}/{}", user_entries + 1, maxround);
+        println!("Round {}/{} | word to find {}", user_entries + 1, maxround,choosen_word);
         let user_entry = record_user_input()?;
         
         if user_entry.is_empty() || !does_word_exist(&user_entry, &dictionnary){
@@ -160,7 +186,7 @@ fn rounds(choosen_word: String)-> Result<bool, Box<dyn std::error::Error>>{
         println!("Results: {:?}", results);
         
         // Check if all letters are green (user won)
-        if results.iter().all(|outcome| matches!(outcome, PossibleOutcome::Green)){
+        if results.iter().all(|outcome| matches!(outcome, PossibleOutcome::Green(_))){
             println!("You won!");
             return Ok(true);
         }
@@ -174,4 +200,11 @@ fn rounds(choosen_word: String)-> Result<bool, Box<dyn std::error::Error>>{
 
 
 fn main() {
+    if let Ok(word) = random_word("/home/thedusty/wordle/src/data/dictionnary.txt") {
+        if let Err(e) = rounds(word) {
+            println!("Error: {}", e);
+        }
+    } else {
+        println!("Failed to load word file");
+    }
 }
